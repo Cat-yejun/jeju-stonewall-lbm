@@ -1,0 +1,13 @@
+__pycache__/
+*.pyc
+*.npz
+*.npy
+*.ckpt/
+*.ckpt.tmp/
+stonewall3d/results*/
+stonewall3d/quick/
+stonewall3d/*.log
+2d/out_*.npz
+2d/vorticity.mp4
+.DS_Store
+.vscode/

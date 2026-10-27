@@ -1,0 +1,466 @@
+<title>돌담 바람 3D</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Gothic+A1:wght@500;800&family=IBM+Plex+Sans+KR:wght@400;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: a working 3D bench. Title line, the scene as the hero, one control rail under it, then reading notes. */
+:root {
+  --bg: #eef0ec; --panel: #fbfcfa; --fg: #1b221e; --muted: #5a6560; --line: #d3d8d3;
+  --scene: #e6e9e4; --ground: #d5d9d2; --grid: #bcc3bb; --basalt: #4a4e4c; --rev: #3d7cc9;
+  --v0: #2a9d8f; --v1: #e9b44c; --v2: #c8553d;
+  --s0: #2f62b0; --s1: #7fb38a; --s2: #e39a3b;
+  --focus: #2c6aa8; --badge: #8a5a12; --badge-bg: #f6ead2;
+  --f-display: "Gothic A1", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
+  --f-body: "IBM Plex Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
+  --f-mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #111513; --panel: #171c19; --fg: #e3e9e5; --muted: #8d9993; --line: #29302c;
+  --scene: #0c0f0e; --ground: #1b201d; --grid: #2c332f; --basalt: #8d928f; --rev: #5d9be0;
+  --v0: #3cc4b3; --v1: #f2c55c; --v2: #ef7a5c;
+  --s0: #5b8fe0; --s1: #8fd19b; --s2: #f2ad52;
+  --focus: #8fc6ef; --badge: #f0c47a; --badge-bg: #2e2617; color-scheme: dark } }
+:root[data-theme="dark"] {
+  --bg: #111513; --panel: #171c19; --fg: #e3e9e5; --muted: #8d9993; --line: #29302c;
+  --scene: #0c0f0e; --ground: #1b201d; --grid: #2c332f; --basalt: #8d928f; --rev: #5d9be0;
+  --v0: #3cc4b3; --v1: #f2c55c; --v2: #ef7a5c;
+  --s0: #5b8fe0; --s1: #8fd19b; --s2: #f2ad52;
+  --focus: #8fc6ef; --badge: #f0c47a; --badge-bg: #2e2617; color-scheme: dark }
+
+[hidden] { display: none !important; }
+html { background: var(--bg); }
+body { background: var(--bg); color: var(--fg); font-family: var(--f-body); font-size: 15px; line-height: 1.6;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 24px 48px; }
+.wrap { max-width: 1180px; margin: 0 auto; display: flex; flex-direction: column; gap: 18px; }
+header { display: flex; flex-direction: column; gap: 6px; }
+.eyebrow { font-family: var(--f-mono); font-size: 12px; letter-spacing: .08em; color: var(--muted); text-transform: uppercase; display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+.badge { font-family: var(--f-body); text-transform: none; letter-spacing: 0; font-size: 12px; font-weight: 600; color: var(--badge); background: var(--badge-bg); border-radius: 4px; padding: 1px 8px; }
+h1 { font-family: var(--f-display); font-weight: 800; font-size: clamp(28px, 5vw, 40px); line-height: 1.1; margin: 0; text-wrap: balance; }
+.lede { margin: 0; max-width: 72ch; color: var(--muted); }
+
+.stage { position: relative; border-radius: 8px; overflow: hidden; background: var(--scene); border: 1px solid var(--line); }
+#gl { display: block; width: 100%; height: min(68vh, 640px); min-height: 360px; touch-action: none; }
+.hud { position: absolute; left: 12px; top: 10px; display: flex; flex-direction: column; gap: 2px; pointer-events: none;
+  font-family: var(--f-mono); font-size: 12.5px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.hud b { color: var(--fg); font-weight: 500; }
+.hint { position: absolute; right: 12px; bottom: 10px; font-size: 12px; color: var(--muted); pointer-events: none; }
+.msg { position: absolute; inset: 0; display: grid; place-items: center; font-family: var(--f-mono); font-size: 13px; color: var(--muted); text-align: center; padding: 16px; }
+
+.rail { display: flex; flex-wrap: wrap; gap: 12px 22px; align-items: flex-start; }
+.group { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.group > span.lab { font-size: 12px; color: var(--muted); letter-spacing: .03em; }
+.row { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+button, .seg label, .chip label { font: inherit; font-size: 14px; color: var(--fg); background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 5px 11px; cursor: pointer; white-space: nowrap; }
+button:hover, .seg label:hover, .chip label:hover { border-color: var(--muted); }
+button:focus-visible, .seg input:focus-visible + label, .chip input:focus-visible + label, input[type=range]:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+.seg { display: flex; }
+.seg input, .chip input { position: absolute; opacity: 0; pointer-events: none; }
+.seg label { border-radius: 0; margin-left: -1px; }
+.seg label:first-of-type { border-radius: 6px 0 0 6px; margin-left: 0; }
+.seg label:last-of-type { border-radius: 0 6px 6px 0; }
+.seg input:checked + label { background: var(--fg); color: var(--bg); border-color: var(--fg); }
+.chip { display: inline-flex; }
+.chip label { display: inline-flex; align-items: center; gap: 7px; }
+.chip label::before { content: ""; width: 9px; height: 9px; border-radius: 2px; border: 1.5px solid var(--muted); }
+.chip input:checked + label::before { background: var(--fg); border-color: var(--fg); }
+.chip input:disabled + label { opacity: .45; cursor: not-allowed; }
+.ctl { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--muted); }
+.ctl input[type=range] { accent-color: var(--fg); width: 150px; }
+.mono { font-family: var(--f-mono); font-size: 12.5px; font-variant-numeric: tabular-nums; color: var(--muted); min-width: 12ch; }
+#vortexCtl[hidden] { display: none !important; }
+
+.legend { display: flex; flex-wrap: wrap; gap: 8px 22px; font-size: 12.5px; color: var(--muted); align-items: center; }
+.legend .key { display: inline-flex; align-items: center; gap: 8px; }
+.legend canvas { width: 110px; height: 9px; border-radius: 2px; }
+.sw { width: 12px; height: 9px; border-radius: 2px; display: inline-block; }
+.notes { border-top: 1px solid var(--line); padding-top: 12px; display: flex; flex-direction: column; gap: 6px; font-size: 13px; color: var(--muted); }
+.notes p { margin: 0; max-width: 90ch; }
+@media (max-width: 560px) { .ctl input[type=range] { width: 120px; } .hint { display: none; } }
+</style>
+
+<div class="wrap">
+  <header>
+    <span class="eyebrow"><span id="eyebrow">3D 격자 볼츠만 · LES</span><span class="badge" id="badge" hidden>저해상도 미리보기</span></span>
+    <h1>돌담 바람 3D</h1>
+    <p class="lede">돌담과 그 주변 바람을 입체로 띄웠습니다. 끌어서 돌리고, 휠이나 두 손가락으로 확대하고, 오른쪽 버튼이나 Shift를 누른 채 끌면 이동합니다. 바람은 화면의 화살표 방향(왼쪽 앞에서 오른쪽 뒤)으로 붑니다.</p>
+  </header>
+
+  <div class="stage">
+    <canvas id="gl" aria-label="돌담과 바람의 3D 장면"></canvas>
+    <div class="hud" id="hud"></div>
+    <div class="hint">끌기: 회전 · 휠: 확대 · Shift+끌기: 이동</div>
+    <div class="msg" id="msg">장면을 준비하는 중…</div>
+  </div>
+
+  <div class="rail">
+    <div class="group"><span class="lab">담</span>
+      <div class="seg" role="radiogroup" aria-label="담" id="caseSeg"></div>
+    </div>
+    <div class="group"><span class="lab">보이기</span>
+      <div class="row">
+        <span class="chip"><input type="checkbox" id="L-stones" checked><label for="L-stones">돌</label></span>
+        <span class="chip"><input type="checkbox" id="L-lines"><label for="L-lines">평균 유선</label></span>
+        <span class="chip"><input type="checkbox" id="L-dots"><label for="L-dots">흐르는 입자</label></span>
+        <span class="chip"><input type="checkbox" id="L-rev"><label for="L-rev">역류 구역</label></span>
+        <span class="chip"><input type="checkbox" id="L-vort"><label for="L-vort">3D 소용돌이</label></span>
+      </div>
+      <div class="row">
+        <label class="ctl" for="dens">입자 수 <input type="range" id="dens" min="1" max="16" step="1" value="4"></label>
+        <span class="mono" id="densv"></span>
+      </div>
+    </div>
+    <div class="group"><span class="lab">시점</span>
+      <div class="row">
+        <button type="button" data-cam="iso">비스듬히</button>
+        <button type="button" data-cam="side">옆</button>
+        <button type="button" data-cam="top">위</button>
+        <button type="button" data-cam="front">바람 쪽</button>
+        <button type="button" data-cam="back">뒤쪽</button>
+      </div>
+    </div>
+    <div class="group" id="vortexCtl" hidden><span class="lab">3D 소용돌이 재생</span>
+      <div class="row">
+        <button type="button" id="play">❚❚ 정지</button>
+        <label class="ctl" for="frame">프레임 <input type="range" id="frame" min="0" max="1" step="1" value="0"></label>
+        <span class="mono" id="ftime">t = 0.0 H/U</span>
+      </div>
+      <div class="row">
+        <label class="ctl" for="thr">세기 기준 <input type="range" id="thr" min="0" max="1" step="0.005" value="0.5"></label>
+        <span class="mono" id="thrv">Q &gt; –</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="legend" id="legend"></div>
+  <div class="notes" id="notes"></div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/three@0.147.0/build/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.147.0/examples/js/controls/OrbitControls.js"></script>
+<script>
+const DATA = __DATA__;
+const $ = s => document.querySelector(s);
+const cases = DATA.cases, INFO = DATA.info;
+const reduceMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
+const caseName = c => c.porosityTarget <= 0 ? "틈 없는 담" : `돌담 ${Math.round(c.porosity * 100)}%`;
+
+function css(n) { return getComputedStyle(document.documentElement).getPropertyValue(n).trim(); }
+async function inflate(b64) {
+  const bin = atob(b64), bytes = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+  const st = new Blob([bytes]).stream().pipeThrough(new DecompressionStream("gzip"));
+  return await new Response(st).arrayBuffer();
+}
+
+// ------------------------------------------------------------------ scene
+let renderer, scene, camera, controls, hemi, sun, groundMesh, gridLines, arrow;
+const loaded = {};               // per-case THREE objects
+let cur = null, frame = 0, playing = !reduceMotion, acc = 0, lastT = 0, thrNorm = 0.5;
+const SPAN = cases[0].domain.span;
+
+function initScene() {
+  const canvas = $("#gl");
+  renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+  if (!renderer.capabilities.isWebGL2) throw new Error("WebGL2 not available");
+  renderer.setPixelRatio(Math.min(devicePixelRatio || 1, 2));
+  scene = new THREE.Scene();
+  camera = new THREE.PerspectiveCamera(35, 1, 0.05, 300);
+  controls = new THREE.OrbitControls(camera, canvas);
+  controls.enableDamping = true; controls.dampingFactor = 0.08;
+  hemi = new THREE.HemisphereLight(0xffffff, 0x777777, 0.6); scene.add(hemi);
+  sun = new THREE.DirectionalLight(0xffffff, 0.75); sun.position.set(-4, 9, 6); scene.add(sun);
+  const gx0 = -3, gx1 = 10.5;
+  groundMesh = new THREE.Mesh(new THREE.PlaneGeometry(gx1 - gx0, SPAN), new THREE.MeshStandardMaterial({ roughness: 1 }));
+  groundMesh.rotation.x = -Math.PI / 2; groundMesh.position.set((gx0 + gx1) / 2, -0.002, 0); scene.add(groundMesh);
+  const pts = [];
+  for (let x = -3; x <= 10; x++) pts.push(x, 0.001, -SPAN / 2, x, 0.001, SPAN / 2);
+  pts.push(gx0, 0.001, -SPAN / 2, gx1, 0.001, -SPAN / 2, gx0, 0.001, SPAN / 2, gx1, 0.001, SPAN / 2);
+  const g = new THREE.BufferGeometry(); g.setAttribute("position", new THREE.Float32BufferAttribute(pts, 3));
+  gridLines = new THREE.LineSegments(g, new THREE.LineBasicMaterial({ transparent: true, opacity: 0.9 })); scene.add(gridLines);
+  arrow = new THREE.ArrowHelper(new THREE.Vector3(1, 0, 0), new THREE.Vector3(-2.7, 1.7, 0), 1.3, 0x888888, 0.28, 0.16); scene.add(arrow);
+  setCam("iso", true);
+  new ResizeObserver(resize).observe(canvas); resize();
+  applyTheme();
+}
+function resize() {
+  const c = $("#gl"), w = c.clientWidth, h = c.clientHeight;
+  renderer.setSize(w, h, false); camera.aspect = w / h; camera.updateProjectionMatrix();
+}
+const CAMS = {
+  iso: [[-4.6, 4.3, 7.6], [2.8, 0.3, 0]], side: [[3.0, 0.9, 10.5], [3.0, 0.7, 0]], top: [[3.0, 12, 0.01], [3.0, 0, 0]],
+  front: [[-6.5, 1.0, 0.01], [0, 0.6, 0]], back: [[9.5, 2.2, 3.2], [1.0, 0.5, 0]] };
+function setCam(k, instant) {
+  const [p, t] = CAMS[k];
+  camera.position.set(...p); controls.target.set(...t); controls.update();
+}
+function col(v) { return new THREE.Color(v); }
+function applyTheme() {
+  scene.background = col(css("--scene"));
+  groundMesh.material.color = col(css("--ground"));
+  gridLines.material.color = col(css("--grid"));
+  arrow.setColor(col(css("--muted")));
+  for (const k in loaded) themeCase(loaded[k]);
+  drawLegend();
+}
+
+// ------------------------------------------------------------------ per-case objects
+function meshFrom(p, vBuf, fBuf, mat) {
+  const g = new THREE.BufferGeometry();
+  g.setAttribute("position", new THREE.BufferAttribute(new Float32Array(vBuf), 3));
+  g.setIndex(new THREE.BufferAttribute(p.wide ? new Uint32Array(fBuf) : new Uint16Array(fBuf), 1));
+  g.computeVertexNormals();
+  return new THREE.Mesh(g, mat);
+}
+let dotDensity = 4;              // particles per 45 streamline points
+function buildParticles(o) {
+  o.particles = [];
+  for (let l = 0; l < o.off.length - 1; l++) {
+    const n = o.off[l + 1] - o.off[l], k = Math.max(1, Math.round(n / 45 * dotDensity));
+    for (let j = 0; j < k; j++) o.particles.push({ l, s: (j + Math.random()) / k * (n - 1) });
+  }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute("position", new THREE.BufferAttribute(new Float32Array(o.particles.length * 3), 3));
+  o.dots.geometry.dispose(); o.dots.geometry = g;
+  const el = document.getElementById("densv"); if (el) el.textContent = `${o.particles.length.toLocaleString()}개`;
+}
+let _dot = null;
+function dotTex() {
+  if (_dot) return _dot;
+  const c = document.createElement("canvas"); c.width = c.height = 32;
+  const x = c.getContext("2d"); x.fillStyle = "#fff"; x.beginPath(); x.arc(16, 16, 14, 0, 7); x.fill();
+  return (_dot = new THREE.CanvasTexture(c));
+}
+function speedRGB(s) {           // s: 0..1 (speed / 1.4 U_H)
+  const a = col(css("--s0")), b = col(css("--s1")), c = col(css("--s2"));
+  return s < 0.55 ? a.clone().lerp(b, s / 0.55) : b.clone().lerp(c, (s - 0.55) / 0.45);
+}
+async function loadCase(c) {
+  if (loaded[c.key]) return loaded[c.key];
+  const o = { c, group: new THREE.Group() };
+  const [sv, sf, lo, lp, ls] = await Promise.all([c.stones.v, c.stones.f, c.lines.off, c.lines.p, c.lines.s].map(inflate));
+  o.stones = meshFrom(c.stones, sv, sf, new THREE.MeshStandardMaterial({ roughness: 0.92, metalness: 0 }));
+  o.group.add(o.stones);
+  // streamlines
+  o.off = new Int32Array(lo); o.pts = new Float32Array(lp); o.spd = new Uint8Array(ls);
+  const seg = [];
+  for (let l = 0; l < o.off.length - 1; l++) for (let i = o.off[l]; i < o.off[l + 1] - 1; i++) seg.push(i, i + 1);
+  const lg = new THREE.BufferGeometry();
+  lg.setAttribute("position", new THREE.BufferAttribute(o.pts, 3));
+  lg.setAttribute("color", new THREE.BufferAttribute(new Float32Array(o.pts.length), 3));
+  lg.setIndex(seg);
+  o.lines = new THREE.LineSegments(lg, new THREE.LineBasicMaterial({ vertexColors: true, transparent: true, opacity: 0.8 }));
+  o.group.add(o.lines);
+  // moving particles along the streamlines
+  o.dots = new THREE.Points(new THREE.BufferGeometry(), new THREE.PointsMaterial({ size: 0.07, sizeAttenuation: true, map: dotTex(), alphaTest: 0.5, transparent: true }));
+  buildParticles(o);
+  o.group.add(o.dots);
+  // reverse-flow zone
+  if (c.reverse) {
+    const [rv, rf] = await Promise.all([c.reverse.v, c.reverse.f].map(inflate));
+    o.rev = meshFrom(c.reverse, rv, rf, new THREE.MeshStandardMaterial({ transparent: true, opacity: 0.32, side: THREE.DoubleSide, depthWrite: false, roughness: 0.6 }));
+    o.rev.renderOrder = 2; o.group.add(o.rev);
+  }
+  // vortex volume
+  if (c.vortex) {
+    const v = c.vortex, [qd, md] = await Promise.all([v.data, v.mask].map(inflate));
+    o.q = new Uint8Array(qd); o.qN = v.dims[0] * v.dims[1] * v.dims[2];
+    const tex = new THREE.Data3DTexture(new Uint8Array(o.qN), v.dims[0], v.dims[1], v.dims[2]);
+    tex.format = THREE.RedFormat; tex.type = THREE.UnsignedByteType; tex.minFilter = tex.magFilter = THREE.LinearFilter; tex.unpackAlignment = 1;
+    const mtex = new THREE.Data3DTexture(new Uint8Array(md), v.dims[0], v.dims[1], v.dims[2]);
+    mtex.format = THREE.RedFormat; mtex.type = THREE.UnsignedByteType; mtex.minFilter = mtex.magFilter = THREE.LinearFilter; mtex.unpackAlignment = 1; mtex.needsUpdate = true;
+    o.qtex = tex;
+    const lo3 = new THREE.Vector3(...v.lo), hi3 = new THREE.Vector3(...v.hi);
+    const size = hi3.clone().sub(lo3); size.set(Math.abs(size.x), Math.abs(size.y), Math.abs(size.z));
+    const mat = new THREE.ShaderMaterial({
+      glslVersion: THREE.GLSL3, transparent: true, depthWrite: false, depthTest: false, side: THREE.BackSide,
+      uniforms: { uQ: { value: tex }, uMask: { value: mtex }, uCam: { value: new THREE.Vector3() }, uThr: { value: 0.5 },
+        uScale: { value: size.clone() }, uTexel: { value: new THREE.Vector3(1 / v.dims[0], 1 / v.dims[2], 1 / v.dims[1]) },
+        uLight: { value: new THREE.Vector3(-0.4, 0.8, 0.45).normalize() },
+        uC0: { value: col(css("--v0")) }, uC1: { value: col(css("--v1")) }, uC2: { value: col(css("--v2")) } },
+      vertexShader: `uniform vec3 uCam; out vec3 vOrigin; out vec3 vDir;
+        void main(){ vOrigin = uCam; vDir = position - uCam; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }`,
+      fragmentShader: `precision highp float; precision highp sampler3D;
+        uniform sampler3D uQ; uniform sampler3D uMask; uniform float uThr; uniform vec3 uScale; uniform vec3 uTexel;
+        uniform vec3 uLight; uniform vec3 uC0; uniform vec3 uC1; uniform vec3 uC2;
+        in vec3 vOrigin; in vec3 vDir; out vec4 outColor;
+        vec3 tc(vec3 p){ return vec3(p.x + 0.5, 0.5 - p.z, p.y + 0.5); }
+        float S(vec3 p){ return texture(uQ, tc(p)).r; }
+        void main(){
+          vec3 d = normalize(vDir);
+          vec3 inv = 1.0 / d, t0 = (vec3(-0.5) - vOrigin) * inv, t1 = (vec3(0.5) - vOrigin) * inv;
+          vec3 a = min(t0, t1), b = max(t0, t1);
+          float tn = max(max(a.x, a.y), a.z), tf = min(min(b.x, b.y), b.z);
+          if (tn > tf) discard;
+          tn = max(tn, 0.0);
+          float dt = 1.0 / 320.0;
+          vec4 acc = vec4(0.0);
+          for (int i = 0; i < 900; i++) {
+            float t = tn + (float(i) + 0.5) * dt;
+            if (t > tf || acc.a > 0.96) break;
+            vec3 q = vOrigin + t * d;
+            if (texture(uMask, tc(q)).r > 0.5) break;
+            float v = S(q);
+            if (v > uThr) {
+              vec3 e = uTexel;
+              vec3 g = vec3(S(q + vec3(e.x, 0, 0)) - S(q - vec3(e.x, 0, 0)),
+                            S(q + vec3(0, e.y, 0)) - S(q - vec3(0, e.y, 0)),
+                            S(q + vec3(0, 0, e.z)) - S(q - vec3(0, 0, e.z))) / uScale;
+              vec3 n = -normalize(g + 1e-6);
+              float lam = 0.38 + 0.62 * max(dot(n, uLight), 0.0) + 0.18 * max(dot(n, -d), 0.0);
+              float w = clamp((v - uThr) / 0.28, 0.0, 1.0);
+              vec3 c = w < 0.5 ? mix(uC0, uC1, w * 2.0) : mix(uC1, uC2, w * 2.0 - 1.0);
+              float al = smoothstep(uThr, uThr + 0.05, v) * 0.42;
+              acc.rgb += (1.0 - acc.a) * al * c * lam;
+              acc.a += (1.0 - acc.a) * al;
+            }
+          }
+          if (acc.a < 0.01) discard;
+          outColor = vec4(acc.rgb / acc.a, acc.a);
+        }`
+    });
+    o.vol = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1), mat);
+    o.vol.scale.copy(size); o.vol.position.copy(lo3.clone().add(hi3).multiplyScalar(0.5));
+    o.vol.renderOrder = 5; o.group.add(o.vol);
+    // automatic threshold: keep roughly the strongest 2.5% of voxels across the clip
+    const hist = new Uint32Array(256); for (let i = 0; i < o.q.length; i += 7) hist[o.q[i]]++;
+    let tot = 0; for (let i = 1; i < 256; i++) tot += hist[i];
+    let cum = 0, cut = 255; const all = Math.ceil(o.q.length / 7);
+    for (let i = 255; i > 0; i--) { cum += hist[i]; if (cum > all * 0.025) { cut = i; break; } }
+    o.autoThr = Math.min(0.9, Math.max(0.15, cut / 255));
+    o.thr = o.autoThr;
+  }
+  themeCase(o);
+  loaded[c.key] = o;
+  return o;
+}
+function themeCase(o) {
+  o.stones.material.color = col(css("--basalt"));
+  const cl = o.lines.geometry.getAttribute("color");
+  for (let i = 0; i < o.spd.length; i++) { const c = speedRGB(o.spd[i] / 255); cl.setXYZ(i, c.r, c.g, c.b); }
+  cl.needsUpdate = true;
+  o.dots.material.color = col(css("--fg"));
+  if (o.rev) o.rev.material.color = col(css("--rev"));
+  if (o.vol) { const u = o.vol.material.uniforms; u.uC0.value = col(css("--v0")); u.uC1.value = col(css("--v1")); u.uC2.value = col(css("--v2")); }
+}
+
+// ------------------------------------------------------------------ state & UI
+function layers() {
+  if (!cur) return;
+  cur.stones.visible = $("#L-stones").checked;
+  cur.lines.visible = $("#L-lines").checked;
+  cur.dots.visible = $("#L-dots").checked;
+  if (cur.rev) cur.rev.visible = $("#L-rev").checked;
+  const hasV = !!cur.vol;
+  $("#L-vort").disabled = !hasV; $("#L-rev").disabled = !cur.rev;
+  if (cur.vol) cur.vol.visible = $("#L-vort").checked;
+  $("#vortexCtl").hidden = !(hasV && $("#L-vort").checked);
+  hud(); drawLegend();
+}
+function qOfNorm(n, qmax) { return Math.expm1(n * Math.log1p(qmax)); }
+function setThr(n) {
+  if (!cur || !cur.vol) return;
+  cur.thr = n; cur.vol.material.uniforms.uThr.value = n; $("#thr").value = n;
+  $("#thrv").textContent = `Q > ${qOfNorm(n, cur.c.vortex.qmax).toFixed(1)} (U/H)²`;
+}
+function setFrame(f) {
+  if (!cur || !cur.vol) return;
+  const F = cur.c.vortex.frames; frame = ((f % F) + F) % F;
+  cur.qtex.image.data.set(cur.q.subarray(frame * cur.qN, (frame + 1) * cur.qN)); cur.qtex.needsUpdate = true;
+  $("#frame").value = frame; $("#ftime").textContent = `t = ${(frame * cur.c.vortex.dtUnits).toFixed(1)} H/U`;
+}
+function hud() {
+  if (!cur) return;
+  const s = cur.c.stats, base = cases.find(c => c.porosityTarget <= 0);
+  const rel = (v, b) => base && cur.c !== base ? ` (${v <= b ? "−" : "+"}${Math.abs(Math.round((v / b - 1) * 100))}%)` : "";
+  $("#hud").innerHTML = `<span><b>${caseName(cur.c)}</b></span>
+    <span>평균 C<sub>d</sub> <b>${s.Cd.toFixed(2)}</b>${base ? rel(s.Cd, base.stats.Cd) : ""}</span>
+    <span>최대 C<sub>d</sub> <b>${s.CdMax.toFixed(2)}</b>${base ? rel(s.CdMax, base.stats.CdMax) : ""}</span>
+    ${cur.c.reverse ? `<span>역류 구역 단면적 <b>${cur.c.reverse.area.toFixed(2)}</b> H²</span>` : ""}`;
+}
+async function selectCase(key) {
+  const c = cases.find(x => x.key === key);
+  $("#msg").hidden = false; $("#msg").textContent = "장면을 준비하는 중…";
+  const o = await loadCase(c);
+  if (cur) scene.remove(cur.group);
+  cur = o; scene.add(o.group); $("#msg").hidden = true;
+  $("#densv").textContent = `${o.particles.length.toLocaleString()}개`;
+  if (o.vol) { $("#frame").max = c.vortex.frames - 1; setThr(o.thr); setFrame(frame); }
+  layers();
+}
+function drawLegend() {
+  if (!cur) return;
+  const items = [];
+  if ($("#L-lines").checked || $("#L-dots").checked) items.push(`<span class="key">느린 바람 <canvas data-ramp="s"></canvas> 유입 풍속의 1.4배</span>`);
+  if (cur.rev && $("#L-rev").checked) items.push(`<span class="key"><span class="sw" style="background:var(--rev);opacity:.6"></span> 시간 평균으로 바람이 거꾸로 부는 구역</span>`);
+  if (cur.vol && $("#L-vort").checked) items.push(`<span class="key">약한 소용돌이 <canvas data-ramp="v"></canvas> 강한 소용돌이</span>`);
+  $("#legend").innerHTML = items.join("");
+  document.querySelectorAll("#legend canvas").forEach(cv => {
+    const dpr = Math.min(devicePixelRatio || 1, 2); cv.width = 110 * dpr; cv.height = 9 * dpr;
+    const ctx = cv.getContext("2d");
+    for (let x = 0; x < cv.width; x++) { const t = x / (cv.width - 1);
+      const c = cv.dataset.ramp === "s" ? speedRGB(t) : (t < 0.5 ? col(css("--v0")).lerp(col(css("--v1")), t * 2) : col(css("--v1")).lerp(col(css("--v2")), t * 2 - 1));
+      ctx.fillStyle = `#${c.getHexString()}`; ctx.fillRect(x, 0, 1, cv.height); }
+  });
+}
+function buildUI() {
+  $("#caseSeg").innerHTML = cases.map((c, i) => `<input type="radio" name="case" id="c-${c.key}" value="${c.key}" ${i === cases.length - 1 ? "checked" : ""}><label for="c-${c.key}">${caseName(c)}</label>`).join("");
+  document.querySelectorAll('input[name="case"]').forEach(r => r.onchange = e => selectCase(e.target.value));
+  const anyV = cases.some(c => c.vortex);
+  $("#L-vort").checked = anyV; $("#L-lines").checked = !anyV; $("#L-dots").checked = !anyV; $("#L-rev").checked = !anyV;
+  ["stones", "lines", "dots", "rev", "vort"].forEach(k => $("#L-" + k).onchange = layers);
+  document.querySelectorAll("[data-cam]").forEach(b => b.onclick = () => setCam(b.dataset.cam));
+  $("#play").onclick = () => { playing = !playing; $("#play").textContent = playing ? "❚❚ 정지" : "▶ 재생"; };
+  $("#play").textContent = playing ? "❚❚ 정지" : "▶ 재생";
+  $("#frame").oninput = e => { playing = false; $("#play").textContent = "▶ 재생"; setFrame(+e.target.value); };
+  $("#thr").oninput = e => setThr(+e.target.value);
+  $("#dens").oninput = e => { dotDensity = +e.target.value; for (const k in loaded) buildParticles(loaded[k]); };
+  const low = INFO.H < 20;
+  $("#badge").hidden = !low;
+  $("#eyebrow").textContent = `3D 격자 볼츠만 · LES · Re ≈ ${Math.round(INFO.Re).toLocaleString()}`;
+  $("#notes").innerHTML = `
+    <p><b>평균 유선.</b> 시간 평균한 바람장을 따라 담 앞 2H 지점에서 출발시킨 선입니다. 색은 그 자리의 평균 풍속이고, 입자는 유선을 따라 평균 속도에 비례해 움직입니다. 담 뒤에서 출발시킨 선도 함께 그려서 뒤쪽에서 말려 도는 흐름을 보여 줍니다.</p>
+    <p><b>3D 소용돌이.</b> 순간 바람장에서 회전이 변형보다 강한 곳(Q-criterion &gt; 기준값)을 볼륨으로 그렸습니다. 세기 기준을 낮추면 약한 소용돌이까지, 높이면 가장 강한 소용돌이 심만 보입니다. ${cases.some(c => c.vortex) ? "" : "이 결과 파일에는 3D 소용돌이 프레임이 없습니다. 새 lbm3d.py로 다시 계산하면 생깁니다."}</p>
+    <p><b>설정.</b> 격자 ${INFO.grid.join("×")}, 담 높이 H = ${INFO.H}격자. 모든 길이는 H 단위이고, 담 길이 방향(${SPAN.toFixed(0)}H)은 주기 경계라 양 끝이 이어져 있습니다.</p>`;
+}
+
+function animate(t) {
+  requestAnimationFrame(animate);
+  const dt = Math.min(0.05, (t - lastT) / 1000 || 0); lastT = t;
+  controls.update();
+  if (cur) {
+    if (cur.dots.visible && !reduceMotion) {
+      const pos = cur.dots.geometry.getAttribute("position");
+      cur.particles.forEach((p, i) => {
+        const a = cur.off[p.l], n = cur.off[p.l + 1] - a;
+        const i0 = Math.floor(p.s), sp = cur.spd[a + i0] / 255 * 1.4;
+        p.s += dt * (2 + 26 * sp);
+        if (p.s >= n - 1) p.s = 0;
+        const j = a + Math.floor(p.s), f = p.s - Math.floor(p.s), P = cur.pts;
+        pos.setXYZ(i, P[3*j] + (P[3*j+3] - P[3*j]) * f, P[3*j+1] + (P[3*j+4] - P[3*j+1]) * f, P[3*j+2] + (P[3*j+5] - P[3*j+2]) * f);
+      });
+      pos.needsUpdate = true;
+    }
+    if (cur.vol && cur.vol.visible) {
+      cur.vol.material.uniforms.uCam.value.copy(cur.vol.worldToLocal(camera.position.clone()));
+      if (playing) { acc += dt * 8; if (acc >= 1) { setFrame(frame + Math.floor(acc)); acc %= 1; } }
+    }
+  }
+  renderer.render(scene, camera);
+}
+
+(async () => {
+  try {
+    if (!window.THREE || !THREE.OrbitControls) throw new Error("three.js를 불러오지 못했습니다. 인터넷 연결을 확인해 주세요.");
+    initScene(); buildUI();
+    await selectCase(cases[cases.length - 1].key);
+    matchMedia("(prefers-color-scheme: dark)").addEventListener("change", applyTheme);
+    new MutationObserver(applyTheme).observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
+    requestAnimationFrame(t => { lastT = t; animate(t); });
+  } catch (e) {
+    console.error(e);
+    $("#msg").hidden = false;
+    $("#msg").textContent = /WebGL2/.test(e.message) ? "이 브라우저는 WebGL2를 지원하지 않습니다. 최신 Chrome, Safari, Firefox에서 열어 주세요." : e.message;
+  }
+})();
+</script>

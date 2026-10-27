@@ -1,0 +1,324 @@
+<title>돌담과 바람</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Gothic+A1:wght@500;800&family=IBM+Plex+Sans+KR:wght@400;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: one lab-notebook column; a stacked wind-tunnel strip per wall, a shared force trace under it, then the numbers and the reasoning. */
+:root {
+  --bg: #eef0ec; --panel: #fbfcfa; --fg: #1b221e; --muted: #5a6560; --line: #d3d8d3;
+  --basalt: #383b39; --basalt-hi: #55595a;
+  --neg: #2c6aa8; --mid: #eef0ec; --pos: #b8432c;
+  --spd-lo: #fbfcfa; --spd-hi: #12466f;
+  --c-solid: #b8432c; --c-p20: #2a78ae; --c-p40: #2f8d6c;
+  --focus: #2c6aa8;
+  --f-display: "Gothic A1", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
+  --f-body: "IBM Plex Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
+  --f-mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #111513; --panel: #171c19; --fg: #e3e9e5; --muted: #8d9993; --line: #29302c;
+  --basalt: #9a9f9c; --basalt-hi: #c3c7c4;
+  --neg: #5a9ad6; --mid: #111513; --pos: #e27258;
+  --spd-lo: #111513; --spd-hi: #8fc6ef;
+  --c-solid: #e27258; --c-p20: #5aa6dc; --c-p40: #5cc39b; --focus: #8fc6ef;
+  color-scheme: dark } }
+:root[data-theme="dark"] {
+  --bg: #111513; --panel: #171c19; --fg: #e3e9e5; --muted: #8d9993; --line: #29302c;
+  --basalt: #9a9f9c; --basalt-hi: #c3c7c4;
+  --neg: #5a9ad6; --mid: #111513; --pos: #e27258;
+  --spd-lo: #111513; --spd-hi: #8fc6ef;
+  --c-solid: #e27258; --c-p20: #5aa6dc; --c-p40: #5cc39b; --focus: #8fc6ef;
+  color-scheme: dark }
+
+html { background: var(--bg); }
+body { background: var(--bg); color: var(--fg); font-family: var(--f-body); font-size: 15px; line-height: 1.6;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 28px 56px; }
+.wrap { max-width: 980px; margin: 0 auto; display: flex; flex-direction: column; gap: 28px; }
+header { display: flex; flex-direction: column; gap: 8px; }
+.eyebrow { font-family: var(--f-mono); font-size: 12px; letter-spacing: .08em; color: var(--muted); text-transform: uppercase; }
+h1 { font-family: var(--f-display); font-weight: 800; font-size: clamp(30px, 6vw, 46px); line-height: 1.1; margin: 0; letter-spacing: -0.01em; text-wrap: balance; }
+.lede { max-width: 64ch; color: var(--muted); margin: 0; }
+h2 { font-family: var(--f-display); font-weight: 800; font-size: 21px; margin: 0; text-wrap: balance; }
+
+.controls { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5; background: var(--bg);
+  display: flex; flex-wrap: wrap; align-items: center; gap: 10px 18px; padding-block: 10px; border-bottom: 1px solid var(--line); }
+body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 10; background: var(--bg); }
+button, .seg label { font: inherit; font-size: 14px; color: var(--fg); background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 6px 12px; cursor: pointer; }
+button:hover, .seg label:hover { border-color: var(--muted); }
+button:focus-visible, input:focus-visible + label, input[type=range]:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+#play { min-width: 92px; font-weight: 600; }
+.seg { display: flex; gap: 0; }
+.seg input { position: absolute; opacity: 0; pointer-events: none; }
+.seg label { border-radius: 0; margin-left: -1px; }
+.seg label:first-of-type { border-radius: 6px 0 0 6px; margin-left: 0; }
+.seg label:last-of-type { border-radius: 0 6px 6px 0; }
+.seg input:checked + label { background: var(--fg); color: var(--bg); border-color: var(--fg); }
+.ctl { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--muted); }
+.ctl input[type=range] { accent-color: var(--fg); }
+#scrub { width: min(260px, 50vw); }
+.time { font-family: var(--f-mono); font-variant-numeric: tabular-nums; font-size: 13px; color: var(--muted); min-width: 11ch; }
+
+.tunnel { display: flex; flex-direction: column; gap: 14px; }
+.strip { display: flex; flex-direction: column; gap: 6px; }
+.strip-head { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+.strip-name { font-weight: 600; display: flex; align-items: center; gap: 8px; }
+.sw { width: 10px; height: 10px; border-radius: 2px; display: inline-block; }
+.readout { font-family: var(--f-mono); font-variant-numeric: tabular-nums; font-size: 13px; color: var(--muted); }
+.readout b { color: var(--fg); font-weight: 500; }
+.strip canvas { width: 100%; max-width: 100%; display: block; border-radius: 4px; background: var(--mid); aspect-ratio: 500 / 104; }
+#ruler { width: 100%; height: 26px; display: block; }
+.legend { display: flex; align-items: center; gap: 10px; font-size: 12.5px; color: var(--muted); flex-wrap: wrap; }
+#cbar { width: 180px; height: 10px; border-radius: 2px; }
+.loading { font-family: var(--f-mono); font-size: 13px; color: var(--muted); }
+
+.chart-box { display: flex; flex-direction: column; gap: 8px; }
+#chart { width: 100%; height: 220px; display: block; }
+
+.table-wrap { overflow-x: auto; }
+table { border-collapse: collapse; width: 100%; min-width: 520px; font-size: 14px; }
+th, td { text-align: right; padding: 9px 10px; border-bottom: 1px solid var(--line); font-variant-numeric: tabular-nums; }
+th:first-child, td:first-child { text-align: left; }
+thead th { font-size: 12px; font-weight: 600; color: var(--muted); letter-spacing: .03em; }
+td.num { font-family: var(--f-mono); }
+.delta { font-size: 12px; color: var(--c-p40); margin-left: 6px; }
+
+.why { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 18px 28px; }
+.why > div { min-width: 0; display: flex; flex-direction: column; gap: 4px; }
+.why h3 { font-size: 15px; margin: 0; font-weight: 600; }
+.why p { margin: 0; color: var(--muted); max-width: 60ch; }
+.notes { font-size: 13px; color: var(--muted); border-top: 1px solid var(--line); padding-top: 14px; display: flex; flex-direction: column; gap: 6px; }
+.notes p { margin: 0; max-width: 80ch; }
+code { font-family: var(--f-mono); font-size: 0.92em; }
+@media (max-width: 520px) { .controls { gap: 8px 12px; } #scrub { width: 100%; } .ctl.scrub { width: 100%; } }
+</style>
+
+<div class="wrap">
+  <header>
+    <span class="eyebrow">2D 격자 볼츠만 · LES · Re ≈ 4000</span>
+    <h1>돌담과 바람</h1>
+    <p class="lede">높이 H인 담 세 개에 같은 바람을 불어 넣었습니다. 맨 위는 틈 없는 담, 아래 둘은 가로 틈을 뚫어 공극률을 20%, 40%로 만든 담입니다. 담 뒤에서 말려 올라가는 소용돌이와, 그 순간 담이 받는 힘을 함께 보세요.</p>
+  </header>
+
+  <div class="controls" role="group" aria-label="재생 조절">
+    <button id="play" type="button">❚❚ 정지</button>
+    <div class="seg" role="radiogroup" aria-label="표시할 값">
+      <input type="radio" name="field" id="f-vort" value="vort" checked><label for="f-vort">소용돌이 (순간)</label>
+      <input type="radio" name="field" id="f-speed" value="speed"><label for="f-speed">풍속 (시간평균)</label>
+    </div>
+    <label class="ctl" for="speed">속도 <input type="range" id="speed" min="0.25" max="3" step="0.25" value="1"></label>
+    <label class="ctl scrub" for="scrub">프레임 <input type="range" id="scrub" min="0" max="99" step="1" value="0"></label>
+    <span class="time" id="time">t = 0.0 H/U</span>
+  </div>
+
+  <section class="tunnel" aria-label="시뮬레이션 화면">
+    <div id="strips"><p class="loading" id="loading">데이터를 푸는 중…</p></div>
+    <canvas id="ruler" aria-hidden="true"></canvas>
+    <div class="legend" id="legend"></div>
+  </section>
+
+  <section class="chart-box">
+    <h2>담이 받는 바람 힘</h2>
+    <p class="lede">항력계수 C<sub>d</sub> = F / (½ρU²H). 세로선이 지금 보고 있는 순간입니다. 틈 없는 담의 선이 가장 높고, 출렁임도 큽니다.</p>
+    <canvas id="chart" aria-label="시간에 따른 항력계수"></canvas>
+  </section>
+
+  <section style="display:flex;flex-direction:column;gap:10px">
+    <h2>숫자로 비교</h2>
+    <div class="table-wrap"><table id="tbl"></table></div>
+    <p class="lede" style="font-size:13px">전도 모멘트 계수 C<sub>m</sub> = M / (½ρU²H²), 담 밑동을 축으로 담을 넘어뜨리려는 회전력입니다. 괄호 안은 틈 없는 담 대비 감소율입니다.</p>
+  </section>
+
+  <section style="display:flex;flex-direction:column;gap:14px">
+    <h2>구멍이 담을 지키는 이유</h2>
+    <div class="why">
+      <div><h3>앞에서 미는 압력이 빠져나간다</h3><p>틈 없는 담 앞에서는 바람이 멈추면서 동압 ½ρU²에 가까운 압력이 고스란히 벽면에 쌓입니다. 틈이 있으면 공기 일부가 그대로 통과하므로 앞면에 쌓이는 압력이 줄어듭니다.</p></div>
+      <div><h3>뒤에서 빨아당기는 힘이 약해진다</h3><p>담 꼭대기에서 떨어져 나간 흐름은 담 뒤에 크고 느린 와류 공간을 만들고, 그곳의 압력은 주변보다 낮습니다. 담은 앞에서 밀리고 뒤에서 당겨집니다. 틈으로 새어 나간 제트가 이 저압 공간을 채워 흡입을 약하게 만듭니다. 평균 풍속 화면에서 틈 없는 담 뒤의 짙은 정체 구역이 구멍 뚫린 담에서는 작아지는 것을 볼 수 있습니다.</p></div>
+      <div><h3>돌풍 때의 최대 하중이 작아진다</h3><p>담이 넘어지는 건 평균 힘보다 순간적인 최대 힘 때문인 경우가 많습니다. 틈 없는 담은 꼭대기에서 큰 소용돌이가 주기적으로 떨어져 나가며 힘이 크게 출렁입니다. 틈에서 나오는 작은 제트들이 이 큰 소용돌이를 잘게 부숴 출렁임의 폭도 줄입니다.</p></div>
+      <div><h3>넘어뜨리는 회전력이 줄어든다</h3><p>담이 넘어지는 조건은 바람의 전도 모멘트가 자기 무게로 버티는 모멘트보다 커질 때입니다. 힘 자체가 줄고, 높은 곳에 걸리던 압력도 틈을 따라 빠지므로 밑동에 걸리는 회전력이 함께 줄어듭니다.</p></div>
+    </div>
+  </section>
+
+  <div class="notes">
+    <p><b>모델 한계.</b> 단면만 보는 2D 계산이라 실제 돌 사이의 3차원 구멍과 돌 모양의 불규칙성은 반영하지 않았습니다. 레이놀즈수는 실제 바람(약 10⁶)보다 훨씬 작고, 계산 영역 높이가 4H라 위쪽 경계의 영향도 일부 섞여 있습니다. 경향은 믿을 만하지만 계수 값 자체는 풍동 실험값과 다를 수 있습니다.</p>
+    <p><b>설정.</b> D2Q9 BGK + Smagorinsky(C<sub>s</sub> = 0.16), 지표 경계층 유입 u ∝ y<sup>1/7</sup>, 담 높이 40격자 · 두께 6격자, 힘은 운동량 교환법으로 계산했습니다.</p>
+  </div>
+</div>
+
+<script>
+const DATA = __DATA__;
+const $ = s => document.querySelector(s);
+const NAMES = { solid: "틈 없는 담", p20: "구멍 뚫린 담", p40: "구멍 뚫린 담" };
+const reduceMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+let field = "vort", frame = 0, playing = !reduceMotion, speed = 1, acc = 0, last = 0;
+const cases = DATA.cases, F = Math.min(...cases.map(c => c.frames));
+let tok = {};
+
+function css(name) { return getComputedStyle(document.documentElement).getPropertyValue(name).trim(); }
+function hex(c) { const m = c.replace("#", ""); return [0, 2, 4].map(i => parseInt(m.slice(i, i + 2), 16)); }
+function mix(a, b, t) { return a.map((v, i) => Math.round(v + (b[i] - v) * t)); }
+function readTokens() {
+  tok = { neg: hex(css("--neg")), mid: hex(css("--mid")), pos: hex(css("--pos")),
+    lo: hex(css("--spd-lo")), hi: hex(css("--spd-hi")),
+    basalt: css("--basalt"), basaltHi: css("--basalt-hi"), fg: css("--fg"), muted: css("--muted"), line: css("--line") };
+  for (const c of cases) c.color = css("--c-" + c.key);
+  // vorticity LUT: diverging, with a soft knee so weak vorticity fades into the ground colour
+  tok.lutV = new Uint8ClampedArray(256 * 4); tok.lutS = new Uint8ClampedArray(256 * 4);
+  for (let i = 0; i < 256; i++) {
+    const s = i / 254 * 2 - 1, a = Math.min(1, Math.pow(Math.abs(s), 0.7));
+    const rgb = s < 0 ? mix(tok.mid, tok.neg, a) : mix(tok.mid, tok.pos, a);
+    const t = Math.pow(i / 254, 1.2), rs = mix(tok.lo, tok.hi, t);
+    tok.lutV.set([...rgb, 255], i * 4); tok.lutS.set([...rs, 255], i * 4);
+  }
+  tok.lutV.set([...tok.mid, 255], 255 * 4); tok.lutS.set([...tok.mid, 255], 255 * 4);
+}
+
+async function inflate(b64) {
+  const bin = atob(b64), bytes = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+  const stream = new Blob([bytes]).stream().pipeThrough(new DecompressionStream("gzip"));
+  return new Uint8Array(await new Response(stream).arrayBuffer());
+}
+
+function buildStrips() {
+  const host = $("#strips"); host.innerHTML = "";
+  for (const c of cases) {
+    const el = document.createElement("div"); el.className = "strip";
+    const pct = Math.round(c.porosity * 100);
+    el.innerHTML = `<div class="strip-head"><span class="strip-name"><span class="sw" style="background:var(--c-${c.key})"></span>${NAMES[c.key]} <span class="readout">공극률 ${pct}%</span></span>
+      <span class="readout">지금 C<sub>d</sub> <b data-cd>–</b> · 평균 ${c.stats.Cd.toFixed(2)}</span></div><canvas></canvas>`;
+    host.appendChild(el);
+    c.canvas = el.querySelector("canvas"); c.ctx = c.canvas.getContext("2d"); c.cdEl = el.querySelector("[data-cd]");
+    c.off = document.createElement("canvas"); c.off.width = c.nx; c.off.height = c.ny;
+    c.offCtx = c.off.getContext("2d"); c.img = c.offCtx.createImageData(c.nx, c.ny);
+  }
+}
+
+function fit(cv, h) {
+  const dpr = Math.min(devicePixelRatio || 1, 2), w = cv.clientWidth;
+  const hh = h ?? cv.clientHeight;
+  if (cv.width !== Math.round(w * dpr) || cv.height !== Math.round(hh * dpr)) { cv.width = Math.round(w * dpr); cv.height = Math.round(hh * dpr); }
+  return dpr;
+}
+
+function drawStrip(c) {
+  const src = field === "vort" ? c.vortData.subarray(frame * c.nx * c.ny, (frame + 1) * c.nx * c.ny) : c.speedData;
+  const lut = field === "vort" ? tok.lutV : tok.lutS, px = c.img.data;
+  // data row 0 = ground; flip so the ground sits at the bottom
+  for (let y = 0; y < c.ny; y++) {
+    const srow = y * c.nx, drow = (c.ny - 1 - y) * c.nx;
+    for (let x = 0; x < c.nx; x++) { const v = src[srow + x] * 4, o = (drow + x) * 4;
+      px[o] = lut[v]; px[o + 1] = lut[v + 1]; px[o + 2] = lut[v + 2]; px[o + 3] = 255; }
+  }
+  c.offCtx.putImageData(c.img, 0, 0);
+  fit(c.canvas);
+  const W = c.canvas.width, Hh = c.canvas.height, ctx = c.ctx, k = W / c.lx, ky = Hh / c.ly;
+  ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = "high";
+  ctx.drawImage(c.off, 0, 0, W, Hh);
+  // ground
+  ctx.fillStyle = tok.basalt; ctx.fillRect(0, Hh - Math.max(2, ky), W, Math.max(2, ky));
+  // wall stones
+  for (const [x, y, w, h] of c.walls) {
+    const X = x * k, Y = Hh - (y + h) * ky, Ww = w * k, Hr = h * ky;
+    ctx.fillStyle = tok.basalt; ctx.fillRect(X, Y, Ww, Hr);
+    ctx.fillStyle = tok.basaltHi; ctx.fillRect(X, Y, Ww, Math.max(1, Hr * 0.12));
+  }
+  // wind arrow
+  const dpr = W / c.canvas.clientWidth;
+  ctx.fillStyle = tok.muted; ctx.font = `${12 * dpr}px ${css("--f-body")}`; ctx.textBaseline = "top";
+  ctx.fillText("바람 →", 8 * dpr, 6 * dpr);
+  const i = Math.min(c.cd.length - 1, Math.round(frame * c.frameStep / c.cdStep));
+  c.cdEl.textContent = c.cd[i].toFixed(2);
+}
+
+function drawRuler() {
+  const cv = $("#ruler"), dpr = fit(cv, 26), ctx = cv.getContext("2d"), c = cases[0];
+  ctx.clearRect(0, 0, cv.width, cv.height);
+  ctx.fillStyle = tok.muted; ctx.strokeStyle = tok.line; ctx.lineWidth = dpr;
+  ctx.font = `${11.5 * dpr}px ${css("--f-mono")}`; ctx.textAlign = "center"; ctx.textBaseline = "top";
+  const k = cv.width / c.lx, step = cv.clientWidth < 520 ? 2 : 1;
+  for (let xh = -2; xh <= 10; xh += step) {
+    const X = (c.x0 + xh * c.H) * k; ctx.beginPath(); ctx.moveTo(X, 0); ctx.lineTo(X, 5 * dpr); ctx.stroke();
+    ctx.fillText(xh === 0 ? "담" : `${xh}H`, Math.min(cv.width - 14 * dpr, Math.max(10 * dpr, X)), 8 * dpr);
+  }
+}
+
+function drawLegend() {
+  const lg = $("#legend");
+  const label = field === "vort" ? ["시계 반대 방향 회전", "시계 방향 회전"] : ["정체", "자유류의 1.3배"];
+  lg.innerHTML = `<span>${label[0]}</span><canvas id="cbar"></canvas><span>${label[1]}</span><span>· 회색 블록은 돌담과 지면</span>`;
+  const cv = $("#cbar"), dpr = fit(cv, 10), ctx = cv.getContext("2d"), lut = field === "vort" ? tok.lutV : tok.lutS;
+  for (let x = 0; x < cv.width; x++) { const i = Math.round(x / (cv.width - 1) * 254) * 4;
+    ctx.fillStyle = `rgb(${lut[i]},${lut[i + 1]},${lut[i + 2]})`; ctx.fillRect(x, 0, 1, cv.height); }
+}
+
+function drawChart() {
+  const cv = $("#chart"), dpr = fit(cv, 220), ctx = cv.getContext("2d"), W = cv.width, Hh = cv.height;
+  ctx.clearRect(0, 0, W, Hh);
+  const pad = { l: 44 * dpr, r: 12 * dpr, t: 10 * dpr, b: 28 * dpr };
+  const n = Math.min(...cases.map(c => c.cd.length));
+  let lo = Infinity, hi = -Infinity; for (const c of cases) for (let i = 0; i < n; i++) { lo = Math.min(lo, c.cd[i]); hi = Math.max(hi, c.cd[i]); }
+  lo = Math.max(0, Math.floor(lo * 4) / 4); hi = Math.ceil(hi * 4) / 4;
+  const tMax = n * cases[0].cdStep * DATA.tUnit;
+  const X = i => pad.l + i / (n - 1) * (W - pad.l - pad.r), Y = v => pad.t + (1 - (v - lo) / (hi - lo)) * (Hh - pad.t - pad.b);
+  ctx.font = `${11 * dpr}px ${css("--f-mono")}`; ctx.fillStyle = tok.muted; ctx.strokeStyle = tok.line; ctx.lineWidth = dpr;
+  ctx.textAlign = "right"; ctx.textBaseline = "middle";
+  const ystep = (hi - lo) > 1.5 ? 0.5 : 0.25;
+  for (let v = lo; v <= hi + 1e-9; v += ystep) { ctx.beginPath(); ctx.moveTo(pad.l, Y(v)); ctx.lineTo(W - pad.r, Y(v)); ctx.stroke(); ctx.fillText(v.toFixed(2), pad.l - 6 * dpr, Y(v)); }
+  ctx.textAlign = "center"; ctx.textBaseline = "top";
+  const tstep = tMax > 15 ? 5 : 2;
+  for (let t = 0; t <= tMax; t += tstep) { const i = t / tMax * (n - 1); ctx.fillText(t + "", X(i), Hh - pad.b + 6 * dpr); }
+  ctx.textAlign = "right"; ctx.fillText("시간 tU/H", W - pad.r, Hh - pad.b + 6 * dpr - 0);
+  for (const c of cases) {
+    ctx.strokeStyle = c.color; ctx.lineWidth = 1.4 * dpr; ctx.beginPath();
+    for (let i = 0; i < n; i++) { const x = X(i), y = Y(c.cd[i]); i ? ctx.lineTo(x, y) : ctx.moveTo(x, y); }
+    ctx.stroke();
+  }
+  const ci = Math.min(n - 1, frame * cases[0].frameStep / cases[0].cdStep);
+  ctx.strokeStyle = tok.fg; ctx.lineWidth = 1.2 * dpr; ctx.beginPath(); ctx.moveTo(X(ci), pad.t); ctx.lineTo(X(ci), Hh - pad.b); ctx.stroke();
+  for (const c of cases) { const v = c.cd[Math.round(ci)]; ctx.fillStyle = c.color; ctx.beginPath(); ctx.arc(X(ci), Y(v), 3.5 * dpr, 0, 7); ctx.fill(); }
+}
+
+function buildTable() {
+  const base = cases[0].stats;
+  const pct = (v, b) => b > 0 && v < b ? `<span class="delta">−${Math.round((1 - v / b) * 100)}%</span>` : "";
+  const row = c => `<tr><td><span class="sw" style="background:var(--c-${c.key})"></span> ${NAMES[c.key]} · ${Math.round(c.porosity * 100)}%</td>
+    <td class="num">${c.stats.Cd.toFixed(2)}${c === cases[0] ? "" : pct(c.stats.Cd, base.Cd)}</td>
+    <td class="num">${c.stats.CdMax.toFixed(2)}${c === cases[0] ? "" : pct(c.stats.CdMax, base.CdMax)}</td>
+    <td class="num">${c.stats.CdStd.toFixed(3)}${c === cases[0] ? "" : pct(c.stats.CdStd, base.CdStd)}</td>
+    <td class="num">${c.stats.Cm.toFixed(2)}${c === cases[0] ? "" : pct(c.stats.Cm, base.Cm)}</td>
+    <td class="num">${c.stats.CmMax.toFixed(2)}${c === cases[0] ? "" : pct(c.stats.CmMax, base.CmMax)}</td></tr>`;
+  $("#tbl").innerHTML = `<thead><tr><th>담</th><th>평균 C<sub>d</sub></th><th>최대 C<sub>d</sub></th><th>C<sub>d</sub> 출렁임 (표준편차)</th><th>평균 C<sub>m</sub></th><th>최대 C<sub>m</sub></th></tr></thead><tbody>${cases.map(row).join("")}</tbody>`;
+}
+
+function render() {
+  for (const c of cases) drawStrip(c);
+  drawChart();
+  $("#scrub").value = frame;
+  $("#time").textContent = `t = ${(frame * cases[0].frameStep * DATA.tUnit).toFixed(1)} H/U`;
+}
+function tick(ts) {
+  if (playing) { acc += (ts - last) / 1000 * 12 * speed; let moved = false;
+    while (acc >= 1) { acc -= 1; frame = (frame + 1) % F; moved = true; } if (moved) render(); }
+  last = ts; requestAnimationFrame(tick);
+}
+function setPlaying(p) { playing = p; $("#play").textContent = p ? "❚❚ 정지" : "▶ 재생"; }
+
+async function init() {
+  await Promise.all(cases.map(async c => { c.vortData = await inflate(c.vort); c.speedData = await inflate(c.speed); delete c.vort; delete c.speed; }));
+  readTokens(); buildStrips(); buildTable(); drawRuler(); drawLegend();
+  $("#scrub").max = F - 1; setPlaying(playing); render();
+  $("#play").onclick = () => setPlaying(!playing);
+  $("#speed").oninput = e => speed = +e.target.value;
+  $("#scrub").oninput = e => { frame = +e.target.value; setPlaying(false); render(); };
+  document.querySelectorAll('input[name="field"]').forEach(r => r.onchange = e => { field = e.target.value; drawLegend(); render(); });
+  addEventListener("keydown", e => { if (e.code === "Space" && !/INPUT|BUTTON/.test(e.target.tagName)) { e.preventDefault(); setPlaying(!playing); } });
+  addEventListener("resize", () => { drawRuler(); drawLegend(); render(); });
+  const retheme = () => { readTokens(); drawRuler(); drawLegend(); render(); };
+  matchMedia("(prefers-color-scheme: dark)").addEventListener("change", retheme);
+  new MutationObserver(retheme).observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
+  requestAnimationFrame(t => { last = t; requestAnimationFrame(tick); });
+}
+init().catch(err => { $("#loading").textContent = "데이터를 풀지 못했습니다: 최신 버전의 Chrome, Safari, Firefox에서 열어 주세요."; console.error(err); });
+</script>

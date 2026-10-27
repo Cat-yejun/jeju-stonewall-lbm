@@ -1,0 +1,337 @@
+<title>3D 돌담과 바람</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Gothic+A1:wght@500;800&family=IBM+Plex+Sans+KR:wght@400;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: one lab-notebook column; per wall a strip (front silhouette + animated section), a shared force trace, then numbers and reasoning. */
+:root {
+  --bg: #eef0ec; --panel: #fbfcfa; --fg: #1b221e; --muted: #5a6560; --line: #d3d8d3;
+  --basalt: #383b39; --neg: #2c6aa8; --mid: #eef0ec; --pos: #b8432c;
+  --spd-lo: #fbfcfa; --spd-hi: #12466f;
+  --c0: #b8432c; --c1: #2a78ae; --c2: #2f8d6c; --c3: #8a5bb0;
+  --focus: #2c6aa8; --badge: #8a5a12; --badge-bg: #f6ead2;
+  --f-display: "Gothic A1", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
+  --f-body: "IBM Plex Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
+  --f-mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #111513; --panel: #171c19; --fg: #e3e9e5; --muted: #8d9993; --line: #29302c;
+  --basalt: #a3a8a5; --neg: #5a9ad6; --mid: #111513; --pos: #e27258;
+  --spd-lo: #111513; --spd-hi: #8fc6ef;
+  --c0: #e27258; --c1: #5aa6dc; --c2: #5cc39b; --c3: #b58ddb;
+  --focus: #8fc6ef; --badge: #f0c47a; --badge-bg: #2e2617; color-scheme: dark } }
+:root[data-theme="dark"] {
+  --bg: #111513; --panel: #171c19; --fg: #e3e9e5; --muted: #8d9993; --line: #29302c;
+  --basalt: #a3a8a5; --neg: #5a9ad6; --mid: #111513; --pos: #e27258;
+  --spd-lo: #111513; --spd-hi: #8fc6ef;
+  --c0: #e27258; --c1: #5aa6dc; --c2: #5cc39b; --c3: #b58ddb;
+  --focus: #8fc6ef; --badge: #f0c47a; --badge-bg: #2e2617; color-scheme: dark }
+
+html { background: var(--bg); }
+body { background: var(--bg); color: var(--fg); font-family: var(--f-body); font-size: 15px; line-height: 1.6;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 28px 56px; }
+.wrap { max-width: 980px; margin: 0 auto; display: flex; flex-direction: column; gap: 28px; }
+header { display: flex; flex-direction: column; gap: 8px; }
+.eyebrow { font-family: var(--f-mono); font-size: 12px; letter-spacing: .08em; color: var(--muted); text-transform: uppercase; display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+.badge { font-family: var(--f-body); letter-spacing: 0; text-transform: none; font-size: 12px; color: var(--badge); background: var(--badge-bg); border-radius: 4px; padding: 1px 8px; font-weight: 600; }
+h1 { font-family: var(--f-display); font-weight: 800; font-size: clamp(30px, 6vw, 46px); line-height: 1.1; margin: 0; letter-spacing: -0.01em; text-wrap: balance; }
+.lede { max-width: 66ch; color: var(--muted); margin: 0; }
+h2 { font-family: var(--f-display); font-weight: 800; font-size: 21px; margin: 0; text-wrap: balance; }
+section { display: flex; flex-direction: column; gap: 10px; }
+
+.controls { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5; background: var(--bg);
+  display: flex; flex-wrap: wrap; align-items: center; gap: 10px 16px; padding-block: 10px; border-bottom: 1px solid var(--line); }
+body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 10; background: var(--bg); }
+button, .seg label { font: inherit; font-size: 14px; color: var(--fg); background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 6px 12px; cursor: pointer; }
+button:hover, .seg label:hover { border-color: var(--muted); }
+button:focus-visible, .seg input:focus-visible + label, input[type=range]:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+#play { min-width: 92px; font-weight: 600; }
+.seg { display: flex; }
+.seg input { position: absolute; opacity: 0; pointer-events: none; }
+.seg label { border-radius: 0; margin-left: -1px; white-space: nowrap; }
+.seg label:first-of-type { border-radius: 6px 0 0 6px; margin-left: 0; }
+.seg label:last-of-type { border-radius: 0 6px 6px 0; }
+.seg input:checked + label { background: var(--fg); color: var(--bg); border-color: var(--fg); }
+.ctl { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--muted); }
+.ctl input[type=range] { accent-color: var(--fg); }
+#scrub { width: min(240px, 50vw); }
+.time { font-family: var(--f-mono); font-variant-numeric: tabular-nums; font-size: 13px; color: var(--muted); min-width: 11ch; }
+
+.viewnote { font-size: 13px; color: var(--muted); margin: 0; max-width: 80ch; }
+#strips { display: flex; flex-direction: column; gap: 16px; }
+.strip { display: flex; flex-direction: column; gap: 6px; }
+.strip-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; }
+.strip-name { font-weight: 600; display: flex; align-items: center; gap: 10px; }
+.sw { width: 10px; height: 10px; border-radius: 2px; display: inline-block; flex: none; }
+.front { height: 30px; width: auto; display: block; border-bottom: 2px solid var(--basalt); }
+.readout { font-family: var(--f-mono); font-variant-numeric: tabular-nums; font-size: 13px; color: var(--muted); }
+.readout b { color: var(--fg); font-weight: 500; }
+.strip canvas.field { width: 100%; max-width: 100%; display: block; border-radius: 4px; background: var(--mid); }
+#ruler { width: 100%; height: 26px; display: block; }
+.legend { display: flex; align-items: center; gap: 10px; font-size: 12.5px; color: var(--muted); flex-wrap: wrap; }
+#cbar { width: 180px; height: 10px; border-radius: 2px; }
+.loading { font-family: var(--f-mono); font-size: 13px; color: var(--muted); }
+
+#chart { width: 100%; height: 220px; display: block; }
+.table-wrap { overflow-x: auto; }
+table { border-collapse: collapse; width: 100%; min-width: 560px; font-size: 14px; }
+th, td { text-align: right; padding: 9px 10px; border-bottom: 1px solid var(--line); font-variant-numeric: tabular-nums; }
+th:first-child, td:first-child { text-align: left; }
+thead th { font-size: 12px; font-weight: 600; color: var(--muted); letter-spacing: .03em; }
+td.num { font-family: var(--f-mono); }
+.delta { font-size: 12px; color: var(--c2); margin-left: 6px; }
+
+.why { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 18px 28px; }
+.why > div { min-width: 0; display: flex; flex-direction: column; gap: 4px; }
+.why h3 { font-size: 15px; margin: 0; font-weight: 600; }
+.why p { margin: 0; color: var(--muted); max-width: 60ch; }
+.notes { font-size: 13px; color: var(--muted); border-top: 1px solid var(--line); padding-top: 14px; display: flex; flex-direction: column; gap: 6px; }
+.notes p { margin: 0; max-width: 82ch; }
+@media (max-width: 560px) { .controls { gap: 8px 10px; } .ctl.scrub, #scrub { width: 100%; } .seg label { padding: 6px 9px; font-size: 13px; } }
+</style>
+
+<div class="wrap">
+  <header>
+    <span class="eyebrow"><span id="eyebrow">3D 격자 볼츠만 · LES</span><span class="badge" id="badge" hidden>저해상도 미리보기</span></span>
+    <h1>3D 돌담과 바람</h1>
+    <p class="lede">크기가 제각각인 돌을 쌓은 담과, 같은 돌에 틈을 메워 바람이 지나갈 수 없게 만든 담에 같은 바람을 불어 넣었습니다. 각 줄 왼쪽의 작은 그림은 바람이 오는 쪽에서 본 담의 모습입니다. 옆 단면과 위에서 본 단면을 바꿔 가며 소용돌이를 보고, 아래 그래프에서 그 순간 담이 받는 힘을 확인해 보세요.</p>
+  </header>
+
+  <div class="controls" role="group" aria-label="재생 조절">
+    <button id="play" type="button">❚❚ 정지</button>
+    <div class="seg" role="radiogroup" aria-label="단면">
+      <input type="radio" name="view" id="v-side" value="side" checked><label for="v-side">옆 단면</label>
+      <input type="radio" name="view" id="v-plan" value="plan"><label for="v-plan">위에서 본 단면</label>
+    </div>
+    <div class="seg" role="radiogroup" aria-label="표시할 값">
+      <input type="radio" name="field" id="f-vort" value="vort" checked><label for="f-vort">소용돌이</label>
+      <input type="radio" name="field" id="f-mean" value="mean"><label for="f-mean">평균 풍속</label>
+    </div>
+    <label class="ctl" for="speed">속도 <input type="range" id="speed" min="0.25" max="3" step="0.25" value="1"></label>
+    <label class="ctl scrub" for="scrub">프레임 <input type="range" id="scrub" min="0" max="99" step="1" value="0"></label>
+    <span class="time" id="time">t = 0.0 H/U</span>
+  </div>
+
+  <section aria-label="시뮬레이션 화면">
+    <p class="viewnote" id="viewnote"></p>
+    <div id="strips"><p class="loading" id="loading">데이터를 푸는 중…</p></div>
+    <canvas id="ruler" aria-hidden="true"></canvas>
+    <div class="legend" id="legend"></div>
+  </section>
+
+  <section>
+    <h2>담이 받는 바람 힘</h2>
+    <p class="lede">항력계수 C<sub>d</sub> = F / (½ρU<sub>H</sub>²·H·L), U<sub>H</sub>는 담 꼭대기 높이의 유입 풍속, L은 계산한 담의 길이입니다. 세로선이 지금 보고 있는 순간입니다.</p>
+    <canvas id="chart" aria-label="시간에 따른 항력계수"></canvas>
+  </section>
+
+  <section>
+    <h2>숫자로 비교</h2>
+    <div class="table-wrap"><table id="tbl"></table></div>
+    <p class="lede" style="font-size:13px">전도 모멘트 계수 C<sub>m</sub> = M / (½ρU<sub>H</sub>²·H²·L)은 담 밑동을 축으로 담을 넘어뜨리려는 회전력입니다. 초록색 숫자는 틈 없는 담보다 줄어든 비율입니다.</p>
+  </section>
+
+  <section>
+    <h2>구멍이 담에 걸리는 힘을 바꾸는 원리</h2>
+    <p class="lede" id="verdict"></p>
+    <div class="why">
+      <div><h3>앞에서 미는 압력이 빠져나간다</h3><p>틈 없는 담 앞에서는 바람이 멈추면서 동압 ½ρU²에 가까운 압력이 벽면에 쌓입니다. 돌 사이 틈이 있으면 공기 일부가 그대로 통과해 앞면의 압력이 낮아집니다.</p></div>
+      <div><h3>뒤에서 빨아당기는 힘이 약해진다</h3><p>담 꼭대기에서 떨어져 나간 흐름은 담 뒤에 크고 느린 저압 공간을 만들고, 담은 앞에서 밀리고 뒤에서 당겨집니다. 틈으로 새어 나온 공기가 이 공간을 채워 흡입을 약하게 만듭니다. 평균 풍속 화면에서 담 뒤의 정체 구역 크기를 비교해 보세요.</p></div>
+      <div><h3>큰 소용돌이가 잘게 부서진다</h3><p>틈 없는 담은 꼭대기에서 담 높이만 한 소용돌이가 주기적으로 떨어져 나가며 힘이 크게 출렁입니다. 불규칙한 틈에서 나오는 제트들은 위치와 세기가 제각각이라, 위에서 본 단면에서 보이듯 이 큰 소용돌이를 담 길이 방향으로도 잘게 흐트러뜨립니다.</p></div>
+      <div><h3>넘어뜨리는 회전력이 줄어든다</h3><p>담은 바람의 전도 모멘트가 자기 무게로 버티는 모멘트보다 커질 때 넘어집니다. 힘이 줄고 돌풍 때의 최대값이 특히 크게 줄면서, 밑동에 걸리는 회전력의 최대값도 함께 내려갑니다.</p></div>
+    </div>
+  </section>
+
+  <div class="notes" id="notes"></div>
+</div>
+
+<script>
+const DATA = __DATA__;
+const $ = s => document.querySelector(s);
+const cases = DATA.cases, INFO = DATA.info;
+const reduceMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
+let view = "side", field = "vort", frame = 0, playing = !reduceMotion, speed = 1, acc = 0, last = 0, tok = {};
+const F = Math.min(...cases.map(c => c.nframes));
+const name = c => c.porosity < 0.05 && c.key.startsWith("solid") ? "틈 없는 담" : "쌓은 돌담";
+const color = (i) => `var(--c${i % 4})`;
+
+function css(n) { return getComputedStyle(document.documentElement).getPropertyValue(n).trim(); }
+function hex(c) { const m = c.replace("#", ""); return [0, 2, 4].map(i => parseInt(m.slice(i, i + 2), 16)); }
+function mix(a, b, t) { return a.map((v, i) => Math.round(v + (b[i] - v) * t)); }
+function readTokens() {
+  const neg = hex(css("--neg")), mid = hex(css("--mid")), pos = hex(css("--pos")), lo = hex(css("--spd-lo")), hi = hex(css("--spd-hi")), bas = hex(css("--basalt"));
+  tok = { fg: css("--fg"), muted: css("--muted"), line: css("--line"), basalt: css("--basalt"), body: css("--f-body"), mono: css("--f-mono"),
+    lutV: new Uint8ClampedArray(1024), lutS: new Uint8ClampedArray(1024), cols: cases.map((c, i) => css(`--c${i % 4}`)) };
+  for (let i = 0; i < 255; i++) {
+    const s = i / 254 * 2 - 1, a = Math.min(1, Math.pow(Math.abs(s), 0.7));
+    tok.lutV.set([...(s < 0 ? mix(mid, neg, a) : mix(mid, pos, a)), 255], i * 4);
+    tok.lutS.set([...mix(lo, hi, Math.pow(i / 254, 1.2)), 255], i * 4);
+  }
+  tok.lutV.set([...bas, 255], 1020); tok.lutS.set([...bas, 255], 1020);
+}
+async function inflate(b64) {
+  const bin = atob(b64), bytes = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+  const st = new Blob([bytes]).stream().pipeThrough(new DecompressionStream("gzip"));
+  return new Uint8Array(await new Response(st).arrayBuffer());
+}
+function fit(cv, h) {
+  const dpr = Math.min(devicePixelRatio || 1, 2), w = cv.clientWidth, hh = h ?? cv.clientHeight;
+  if (cv.width !== Math.round(w * dpr) || cv.height !== Math.round(hh * dpr)) { cv.width = Math.round(w * dpr); cv.height = Math.round(hh * dpr); }
+  return dpr;
+}
+function grid(c) { return view === "side" ? { w: c.side.nx, h: c.side.nz, ly: c.lz } : { w: c.plan.nx, h: c.plan.ny, ly: c.ly }; }
+
+function buildStrips() {
+  const host = $("#strips"); host.innerHTML = "";
+  cases.forEach((c, idx) => {
+    const el = document.createElement("div"); el.className = "strip";
+    el.innerHTML = `<div class="strip-head"><span class="strip-name"><span class="sw" style="background:${color(idx)}"></span>
+      <canvas class="front" aria-label="바람이 오는 쪽에서 본 담"></canvas>${name(c)} <span class="readout">공극률 ${Math.round(c.porosity * 100)}%</span></span>
+      <span class="readout">지금 C<sub>d</sub> <b data-cd>–</b> · 평균 ${c.stats.Cd.toFixed(2)}</span></div><canvas class="field"></canvas>`;
+    host.appendChild(el);
+    c.canvas = el.querySelector("canvas.field"); c.ctx = c.canvas.getContext("2d"); c.cdEl = el.querySelector("[data-cd]");
+    c.frontCv = el.querySelector("canvas.front");
+    c.offs = {};
+    for (const v of ["side", "plan"]) {
+      const g = v === "side" ? [c.side.nx, c.side.nz] : [c.plan.nx, c.plan.ny];
+      const off = document.createElement("canvas"); off.width = g[0]; off.height = g[1];
+      c.offs[v] = { cv: off, ctx: off.getContext("2d"), img: off.getContext("2d").createImageData(g[0], g[1]) };
+    }
+  });
+}
+function drawFront(c) {
+  const { ny, nz } = c.front, cv = c.frontCv, ctx = cv.getContext("2d");
+  cv.width = ny; cv.height = nz; cv.style.aspectRatio = `${ny} / ${nz}`;
+  const img = ctx.createImageData(ny, nz), b = hex(tok.basalt);
+  for (let i = 0; i < ny * nz; i++) { const on = (c.frontBits[i >> 3] >> (7 - (i & 7))) & 1;
+    if (on) img.data.set([...b, 255], i * 4); }
+  ctx.putImageData(img, 0, 0);
+}
+function drawStrip(c) {
+  const g = grid(c), o = c.offs[view], n = g.w * g.h;
+  const src = field === "vort" ? c[view + "Frames"].subarray(frame * n, (frame + 1) * n) : c[view + "Mean"];
+  const lut = field === "vort" ? tok.lutV : tok.lutS, px = o.img.data;
+  for (let y = 0; y < g.h; y++) { const s = y * g.w, d = (g.h - 1 - y) * g.w;
+    for (let x = 0; x < g.w; x++) { const v = src[s + x] * 4, k = (d + x) * 4; px[k] = lut[v]; px[k + 1] = lut[v + 1]; px[k + 2] = lut[v + 2]; px[k + 3] = 255; } }
+  o.ctx.putImageData(o.img, 0, 0);
+  c.canvas.style.aspectRatio = `${c.lx} / ${g.ly}`;
+  fit(c.canvas);
+  const W = c.canvas.width, Hh = c.canvas.height, ctx = c.ctx, dpr = W / c.canvas.clientWidth;
+  ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = "high";
+  ctx.drawImage(o.cv, 0, 0, W, Hh);
+  ctx.fillStyle = tok.muted; ctx.font = `${12 * dpr}px ${tok.body}`; ctx.textBaseline = "top";
+  ctx.fillText("바람 →", 8 * dpr, 6 * dpr);
+  const i = Math.min(c.cd.length - 1, Math.round(frame * c.frameUnits / c.cdUnits));
+  c.cdEl.textContent = c.cd[i].toFixed(2);
+}
+function drawRuler() {
+  const cv = $("#ruler"), dpr = fit(cv, 26), ctx = cv.getContext("2d"), c = cases[0];
+  ctx.clearRect(0, 0, cv.width, cv.height);
+  ctx.fillStyle = tok.muted; ctx.strokeStyle = tok.line; ctx.lineWidth = dpr;
+  ctx.font = `${11.5 * dpr}px ${tok.mono}`; ctx.textAlign = "center"; ctx.textBaseline = "top";
+  const k = cv.width / c.lx, step = cv.clientWidth < 520 ? 2 : 1;
+  for (let xh = -2; xh <= Math.floor(c.lx - c.x0); xh += step) {
+    const X = (c.x0 + xh) * k; ctx.beginPath(); ctx.moveTo(X, 0); ctx.lineTo(X, 5 * dpr); ctx.stroke();
+    ctx.fillText(xh === 0 ? "담" : `${xh}H`, Math.min(cv.width - 14 * dpr, Math.max(10 * dpr, X)), 8 * dpr);
+  }
+}
+function drawLegend() {
+  const lab = field === "vort"
+    ? (view === "side" ? ["시계 방향 회전", "시계 반대 방향 회전"] : ["시계 방향 회전", "시계 반대 방향 회전"])
+    : ["정체", `유입 풍속의 1.4배`];
+  $("#legend").innerHTML = `<span>${lab[0]}</span><canvas id="cbar"></canvas><span>${lab[1]}</span><span>· 회색은 돌과 지면</span>`;
+  const cv = $("#cbar"); fit(cv, 10); const ctx = cv.getContext("2d"), lut = field === "vort" ? tok.lutV : tok.lutS;
+  for (let x = 0; x < cv.width; x++) { const i = Math.round(x / (cv.width - 1) * 254) * 4;
+    ctx.fillStyle = `rgb(${lut[i]},${lut[i + 1]},${lut[i + 2]})`; ctx.fillRect(x, 0, 1, cv.height); }
+  const zh = cases[0].zhalf.toFixed(2);
+  $("#viewnote").textContent = view === "side"
+    ? (field === "vort" ? "옆에서 자른 단면(담 길이의 가운데)입니다. 바람은 왼쪽에서 오고, 회색 덩어리는 그 단면에 걸린 돌입니다." : "옆 단면의 시간평균 풍속을 담 길이 방향으로 평균했습니다. 짙은 색일수록 바람이 약합니다.")
+    : (field === "vort" ? `높이 ${zh}H에서 수평으로 자른 단면을 위에서 본 모습입니다. 세로로 늘어선 회색이 돌담이고, 돌 사이 틈으로 제트가 빠져나갑니다.` : `높이 ${zh}H 수평 단면의 시간평균 풍속입니다. 틈을 통과한 흐름이 담 뒤를 채우는 모습을 볼 수 있습니다.`);
+}
+function drawChart() {
+  const cv = $("#chart"), dpr = fit(cv, 220), ctx = cv.getContext("2d"), W = cv.width, Hh = cv.height;
+  ctx.clearRect(0, 0, W, Hh);
+  const pad = { l: 44 * dpr, r: 12 * dpr, t: 10 * dpr, b: 28 * dpr }, n = Math.min(...cases.map(c => c.cd.length));
+  let lo = Infinity, hi = -Infinity; for (const c of cases) for (let i = 0; i < n; i++) { lo = Math.min(lo, c.cd[i]); hi = Math.max(hi, c.cd[i]); }
+  lo = Math.floor(lo * 4) / 4; hi = Math.ceil(hi * 4) / 4; if (hi - lo < 0.5) hi = lo + 0.5;
+  const tMax = (n - 1) * cases[0].cdUnits;
+  const X = i => pad.l + i / (n - 1) * (W - pad.l - pad.r), Y = v => pad.t + (1 - (v - lo) / (hi - lo)) * (Hh - pad.t - pad.b);
+  ctx.font = `${11 * dpr}px ${tok.mono}`; ctx.fillStyle = tok.muted; ctx.strokeStyle = tok.line; ctx.lineWidth = dpr;
+  ctx.textAlign = "right"; ctx.textBaseline = "middle";
+  const ys = (hi - lo) > 3 ? 1 : (hi - lo) > 1.5 ? 0.5 : 0.25;
+  for (let v = Math.ceil(lo / ys) * ys; v <= hi + 1e-9; v += ys) { ctx.beginPath(); ctx.moveTo(pad.l, Y(v)); ctx.lineTo(W - pad.r, Y(v)); ctx.stroke(); ctx.fillText(v.toFixed(2), pad.l - 6 * dpr, Y(v)); }
+  ctx.textAlign = "center"; ctx.textBaseline = "top";
+  const ts = tMax > 25 ? 10 : tMax > 12 ? 5 : 2;
+  for (let t = 0; t <= tMax - ts * 0.6; t += ts) ctx.fillText(t + "", X(t / cases[0].cdUnits), Hh - pad.b + 6 * dpr);
+  ctx.textAlign = "right"; ctx.fillText("시간 tU/H", W - pad.r, Hh - pad.b + 6 * dpr);
+  cases.forEach((c, k) => { ctx.strokeStyle = tok.cols[k]; ctx.lineWidth = 1.4 * dpr; ctx.beginPath();
+    for (let i = 0; i < n; i++) { const x = X(i), y = Y(c.cd[i]); i ? ctx.lineTo(x, y) : ctx.moveTo(x, y); } ctx.stroke(); });
+  const ci = Math.min(n - 1, Math.round(frame * cases[0].frameUnits / cases[0].cdUnits));
+  ctx.strokeStyle = tok.fg; ctx.lineWidth = 1.2 * dpr; ctx.beginPath(); ctx.moveTo(X(ci), pad.t); ctx.lineTo(X(ci), Hh - pad.b); ctx.stroke();
+  cases.forEach((c, k) => { ctx.fillStyle = tok.cols[k]; ctx.beginPath(); ctx.arc(X(ci), Y(c.cd[ci]), 3.5 * dpr, 0, 7); ctx.fill(); });
+}
+function buildTable() {
+  const base = cases.find(c => c.porosity < 0.05) || cases[0];
+  const cell = (c, k, d) => { const v = c.stats[k]; const b = base.stats[k];
+    const tag = c !== base && b > 0 && v < b ? `<span class="delta">−${Math.round((1 - v / b) * 100)}%</span>` : "";
+    return `<td class="num">${v.toFixed(d)}${tag}</td>`; };
+  $("#tbl").innerHTML = `<thead><tr><th>담</th><th>평균 C<sub>d</sub></th><th>최대 C<sub>d</sub></th><th>C<sub>d</sub> 출렁임 (표준편차)</th><th>평균 C<sub>m</sub></th><th>최대 C<sub>m</sub></th></tr></thead><tbody>` +
+    cases.map((c, i) => `<tr><td><span class="sw" style="background:${color(i)}"></span> ${name(c)} · ${Math.round(c.porosity * 100)}%</td>${cell(c, "Cd", 2)}${cell(c, "CdMax", 2)}${cell(c, "CdStd", 3)}${cell(c, "Cm", 2)}${cell(c, "CmMax", 2)}</tr>`).join("") + "</tbody>";
+}
+function buildVerdict() {
+  const base = cases.find(c => c.porosity < 0.05);
+  if (!base) { $("#verdict").hidden = true; return; }
+  const pct = (v, b) => Math.round((v / b - 1) * 100);
+  const word = d => d < 0 ? `${-d}% 작았고` : d > 0 ? `${d}% 컸고` : "같았고";
+  const lines = cases.filter(c => c !== base).map(c => {
+    const dm = pct(c.stats.Cd, base.stats.Cd), dx = pct(c.stats.CdMax, base.stats.CdMax), dmm = pct(c.stats.CmMax, base.stats.CmMax);
+    return `공극률 ${Math.round(c.porosity * 100)}% 돌담은 틈 없는 담보다 평균 항력이 ${word(dm)}, 돌풍 때 최대 항력은 ${Math.abs(dx)}% ${dx <= 0 ? "작았으며" : "컸으며"}, 최대 전도 모멘트는 ${Math.abs(dmm)}% ${dmm <= 0 ? "작았습니다" : "컸습니다"}.`;
+  });
+  $("#verdict").textContent = "이 계산에서 " + lines.join(" ") + " 아래는 그 차이를 만드는 흐름의 원리입니다.";
+}
+function buildNotes() {
+  const g = INFO.grid, low = INFO.H < 20;
+  $("#eyebrow").textContent = `3D 격자 볼츠만 · LES · Re ≈ ${Math.round(INFO.Re).toLocaleString()}`;
+  $("#badge").hidden = !low;
+  $("#notes").innerHTML = `${low ? `<p><b>저해상도 미리보기.</b> 담 높이를 ${INFO.H}격자로만 나눈 결과라 돌 사이 틈이 몇 격자밖에 안 됩니다. 흐름의 모양과 경향을 확인하는 용도이고, 계수 값은 해상도를 올린 계산에서 달라질 수 있습니다.</p>` : ""}
+  <p><b>설정.</b> D3Q19 정규화 BGK + Smagorinsky(C<sub>s</sub> = ${INFO.Cs}), 격자 ${g[0]}×${g[1]}×${g[2]}, 담 높이 H = ${INFO.H}격자 · 두께 ${INFO.thick.toFixed(2)}H, 유입은 높이에 따라 세지는 지표 바람(u ∝ z<sup>1/7</sup>), 담 길이 방향은 주기 경계. 힘은 운동량 교환법으로 매 스텝 계산했고, ${INFO.tAvg.toFixed(0)} H/U 동안 평균했습니다.</p>
+  <p><b>담 모양.</b> 세 담은 같은 돌을 같은 자리에 쌓았고, 각 돌을 제자리에서 줄여 틈을 만들었습니다. 꼭대기 선을 이루는 돌은 윗면을, 맨 아래 돌은 지면 접촉을 그대로 두어서 담 꼭대기의 최고 높이가 모두 같습니다(${cases.map(c => `${Math.round(c.porosity * 100)}%: 평균 ${c.topMean.toFixed(2)}H · 최고 ${c.topMax.toFixed(2)}H`).join(", ")}).</p>
+  <p><b>한계.</b> 유입 바람에 난류 성분을 넣지 않았고, 실제 바람(Re ~ 10⁶)보다 레이놀즈수가 작습니다. 공극률은 바람 방향으로 똑바로 들여다봤을 때 뚫려 보이는 면적 비율입니다.</p>`;
+}
+function render() {
+  for (const c of cases) drawStrip(c);
+  drawChart();
+  $("#scrub").value = frame;
+  $("#time").textContent = `t = ${(frame * cases[0].frameUnits).toFixed(1)} H/U`;
+}
+function tick(ts) {
+  if (playing) { acc += (ts - last) / 1000 * 10 * speed; let moved = false;
+    while (acc >= 1) { acc -= 1; frame = (frame + 1) % F; moved = true; } if (moved) render(); }
+  last = ts; requestAnimationFrame(tick);
+}
+function setPlaying(p) { playing = p; $("#play").textContent = p ? "❚❚ 정지" : "▶ 재생"; }
+function redrawAll() { readTokens(); cases.forEach(drawFront); drawRuler(); drawLegend(); render(); }
+
+async function init() {
+  await Promise.all(cases.map(async c => {
+    [c.sideFrames, c.sideMean, c.planFrames, c.planMean, c.frontBits] = await Promise.all(
+      [c.side.frames, c.side.mean, c.plan.frames, c.plan.mean, c.front.bits].map(inflate));
+    c.side.frames = c.side.mean = c.plan.frames = c.plan.mean = c.front.bits = null;
+  }));
+  readTokens(); buildStrips(); buildTable(); buildVerdict(); buildNotes(); cases.forEach(drawFront); drawRuler(); drawLegend();
+  $("#scrub").max = F - 1; setPlaying(playing); render();
+  $("#play").onclick = () => setPlaying(!playing);
+  $("#speed").oninput = e => speed = +e.target.value;
+  $("#scrub").oninput = e => { frame = +e.target.value; setPlaying(false); render(); };
+  document.querySelectorAll('input[name="view"]').forEach(r => r.onchange = e => { view = e.target.value; drawLegend(); render(); });
+  document.querySelectorAll('input[name="field"]').forEach(r => r.onchange = e => { field = e.target.value; drawLegend(); render(); });
+  addEventListener("keydown", e => { if (e.code === "Space" && !/INPUT|BUTTON/.test(e.target.tagName)) { e.preventDefault(); setPlaying(!playing); } });
+  addEventListener("resize", () => { drawRuler(); drawLegend(); render(); });
+  matchMedia("(prefers-color-scheme: dark)").addEventListener("change", redrawAll);
+  new MutationObserver(redrawAll).observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
+  requestAnimationFrame(t => { last = t; requestAnimationFrame(tick); });
+}
+init().catch(err => { $("#loading").textContent = "데이터를 풀지 못했습니다. 최신 Chrome, Safari, Firefox에서 열어 주세요."; console.error(err); });
+</script>
